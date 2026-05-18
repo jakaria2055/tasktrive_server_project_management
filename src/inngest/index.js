@@ -207,6 +207,18 @@ const syncWorkspaceMemberCreation = inngest.createFunction(
   }
 );
 
+const debugMemberEvent = inngest.createFunction(
+  { id: "debug-membership-event" ,
+  triggers:[
+    { event: "clerk/organizationMembership.created" },
+    { event: "clerk/organizationInvitation.accepted" },
+  ]},
+
+  async ({ event }) => {
+    console.log("=== DEBUG EVENT FIRED ===", JSON.stringify(event, null, 2));
+  }
+);
+
 
 
 
@@ -342,4 +354,5 @@ export const functions = [
   syncWorkspaceDeletion,
   syncWorkspaceMemberCreation,
   sendTaskAssignmentEmail,
+  debugMemberEvent
 ];
