@@ -135,94 +135,22 @@ const syncWorkspaceDeletion = inngest.createFunction(
 );
 
 //INNGEST FUNCTION TO ADD MEMBER WORKSPACE DATA
-// const syncWorkspaceMemberCreation = inngest.createFunction(
-//   {
-//     id: "delete-workspace-member-from-clerk",
-//     triggers: [{ event: "clerk/organizationInvitation.accepted" }],
-//   },
-//   async ({ event }) => {
-//     const { data } = event;
-//     await prisma.workspaceMember.create({
-//       data: {
-//         userId: data.userId,
-//         workspaceId: data.organization_id,
-//         role: String(data.role_name).toUpperCase(),
-//       },
-//     });
-//   },
-// );
-
-
-
-
 const syncWorkspaceMemberCreation = inngest.createFunction(
   {
-    id: "create-workspace-member",
-    triggers: [{ event: "clerk/organizationMembership.created" }],
-    retries: 5, // Add retries for race condition
+    id: "delete-workspace-member-from-clerk",
+    triggers: [{ event: "clerk/organizationInvitation.accepted" }],
   },
-  async ({ event, step }) => {
-    const { data } = event;
-
-    // Wait for user to exist in DB first
-    await step.run("ensure-user-exists", async () => {
-      let user = null;
-      let attempts = 0;
-
-      while (!user && attempts < 10) {
-        user = await prisma.user.findUnique({
-          where: { id: data.public_user_data.user_id },
-        });
-
-        if (!user) {
-          await new Promise((res) => setTimeout(res, 1000)); // wait 1s
-          attempts++;
-        }
-      }
-
-      if (!user) throw new Error("User not found after waiting — will retry");
-    });
-
-    await step.run("create-member", async () => {
-      // Avoid duplicate if already exists
-      const existing = await prisma.workspaceMember.findFirst({
-        where: {
-          userId: data.public_user_data.user_id,
-          workspaceId: data.organization.id,
-        },
-      });
-
-      if (existing) return;
-
-      await prisma.workspaceMember.create({
-        data: {
-          userId: data.public_user_data.user_id,
-          workspaceId: data.organization.id,
-          role: String(data.role).toUpperCase(),
-        },
-      });
-    });
-
-    console.log("WORKSPACE MEMBER CREATED SUCCESSFULLY");
-  }
-);
-
-const debugMemberEvent = inngest.createFunction(
-  { id: "debug-membership-event" ,
-  triggers:[
-    { event: "clerk/organizationMembership.created" },
-    { event: "clerk/organizationInvitation.accepted" },
-  ]},
-
   async ({ event }) => {
-    console.log("=== DEBUG EVENT FIRED ===", JSON.stringify(event, null, 2));
-  }
+    const { data } = event;
+    await prisma.workspaceMember.create({
+      data: {
+        userId: data.userId,
+        workspaceId: data.organization_id,
+        role: String(data.role_name).toUpperCase(),
+      },
+    });
+  },
 );
-
-
-
-
-
 
 //INNGEST TO SEND EMAIL ON TASK CREATION
 const sendTaskAssignmentEmail = inngest.createFunction(
@@ -354,5 +282,4 @@ export const functions = [
   syncWorkspaceDeletion,
   syncWorkspaceMemberCreation,
   sendTaskAssignmentEmail,
-  debugMemberEvent
 ];
