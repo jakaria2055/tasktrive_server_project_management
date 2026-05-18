@@ -135,63 +135,63 @@ const syncWorkspaceDeletion = inngest.createFunction(
 );
 
 //INNGEST FUNCTION TO ADD MEMBER WORKSPACE DATA
-// const syncWorkspaceMemberCreation = inngest.createFunction(
-//   {
-//     id: "delete-workspace-member-from-clerk",
-//     triggers: [{ event: "clerk/organizationInvitation.accepted" }],
-//   },
-//   async ({ event }) => {
-//     const { data } = event;
-//     await prisma.workspaceMember.create({
-//       data: {
-//         userId: data.userId,
-//         workspaceId: data.organization_id,
-//         role: String(data.role_name).toUpperCase(),
-//       },
-//     });
-//   },
-// );
+const syncWorkspaceMemberCreation = inngest.createFunction(
+  {
+    id: "create-workspace-member",
+    triggers: [{ event: "clerk/organizationMembership.created" }],
+  },
+  async ({ event }) => {
+    const { data } = event;
+    await prisma.workspaceMember.create({
+      data: {
+        userId: data.userId,
+        workspaceId: data.organization_id,
+        role: String(data.role_name).toUpperCase(),
+      },
+    });
+  },
+);
 
 
 
 
 
 //INNGEST FUNCTION TO ADD MEMBER WORKSPACE DATA
-const syncWorkspaceMemberCreation = inngest.createFunction(
-  {
-    id: "create-workspace-member",  // 👈 fixed id
-    triggers: [{ event: "clerk/organizationMembership.created" }],  // 👈 fixed event
-    retries: 3,
-  },
-  async ({ event, step }) => {
-    const { data } = event;
-    const userId = data.public_user_data.user_id;
-    const workspaceId = data.organization.id;
-    const role = String(data.role).toUpperCase().replace("ORG:", "");  // 👈 fixes "ORG:MEMBER" → "MEMBER"
+// const syncWorkspaceMemberCreation = inngest.createFunction(
+//   {
+//     id: "create-workspace-member",  // 👈 fixed id
+//     triggers: [{ event: "clerk/organizationMembership.created" }],  // 👈 fixed event
+//     retries: 3,
+//   },
+//   async ({ event, step }) => {
+//     const { data } = event;
+//     const userId = data.public_user_data.user_id;
+//     const workspaceId = data.organization.id;
+//     const role = String(data.role).toUpperCase().replace("ORG:", "");  // 👈 fixes "ORG:MEMBER" → "MEMBER"
 
-    // Wait for user to exist in DB (race condition fix)
-    await step.run("wait-for-user-in-db", async () => {
-      for (let i = 0; i < 15; i++) {
-        const user = await prisma.user.findUnique({ where: { id: userId } });
-        if (user) return;
-        await new Promise((res) => setTimeout(res, 2000));
-      }
-      throw new Error(`User ${userId} not found in DB after 30s`);
-    });
+//     // Wait for user to exist in DB (race condition fix)
+//     await step.run("wait-for-user-in-db", async () => {
+//       for (let i = 0; i < 15; i++) {
+//         const user = await prisma.user.findUnique({ where: { id: userId } });
+//         if (user) return;
+//         await new Promise((res) => setTimeout(res, 2000));
+//       }
+//       throw new Error(`User ${userId} not found in DB after 30s`);
+//     });
 
-    await step.run("create-workspace-member", async () => {
-      const existing = await prisma.workspaceMember.findFirst({
-        where: { userId, workspaceId },
-      });
-      if (existing) return;
+//     await step.run("create-workspace-member", async () => {
+//       const existing = await prisma.workspaceMember.findFirst({
+//         where: { userId, workspaceId },
+//       });
+//       if (existing) return;
 
-      await prisma.workspaceMember.create({
-        data: { userId, workspaceId, role },
-      });
-      console.log("WORKSPACE MEMBER CREATED:", userId, workspaceId, role);
-    });
-  },
-);
+//       await prisma.workspaceMember.create({
+//         data: { userId, workspaceId, role },
+//       });
+//       console.log("WORKSPACE MEMBER CREATED:", userId, workspaceId, role);
+//     });
+//   },
+// );
 
 
 
