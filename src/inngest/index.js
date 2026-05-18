@@ -135,22 +135,51 @@ const syncWorkspaceDeletion = inngest.createFunction(
 );
 
 //INNGEST FUNCTION TO ADD MEMBER WORKSPACE DATA
+// const syncWorkspaceMemberCreation = inngest.createFunction(
+//   {
+//     id: "delete-workspace-member-from-clerk",
+//     triggers: [{ event: "clerk/organizationInvitation.accepted" }],
+//   },
+//   async ({ event }) => {
+//     const { data } = event;
+//     await prisma.workspaceMember.create({
+//       data: {
+//         userId: data.userId,
+//         workspaceId: data.organization_id,
+//         role: String(data.role_name).toUpperCase(),
+//       },
+//     });
+//   },
+// );
+
+
+
+
 const syncWorkspaceMemberCreation = inngest.createFunction(
   {
-    id: "delete-workspace-member-from-clerk",
-    triggers: [{ event: "clerk/organizationInvitation.accepted" }],
+    id: "create-workspace-member",
+    triggers: [{ event: "clerk/organizationMembership.created" }],
   },
   async ({ event }) => {
     const { data } = event;
+
+    console.log("MEMBER EVENT:", data);
+
     await prisma.workspaceMember.create({
       data: {
-        userId: data.userId,
-        workspaceId: data.organization_id,
-        role: String(data.role_name).toUpperCase(),
+        userId: data.public_user_data.user_id,
+        workspaceId: data.organization.id,
+        role: String(data.role).toUpperCase(),
       },
     });
-  },
+    console.log("WORKSPACE MEMBER TRIGGERED");
+  }
 );
+
+
+
+
+
 
 //INNGEST TO SEND EMAIL ON TASK CREATION
 const sendTaskAssignmentEmail = inngest.createFunction(

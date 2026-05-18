@@ -17,8 +17,20 @@ app.use(cors());
 app.use(clerkMiddleware());
 
 app.get("/", (req, res) =>
-  res.send("Hello!!! TaskTrive Server is Running Fine..."),
+  res.send(`
+    <div style="font-family: Arial, sans-serif; background-color: #8c9aa7; height: 100vh; display: flex; align-items: center; justify-content: center;">
+      <div style="background-color: #ffffff; padding: 30px 40px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+        <h3 style="color: #1a73e8; font-size: 24px; margin-bottom: 12px;">
+          TaskTrive Server is Running Fine...
+        </h3>
+        <p style="color: #555; font-size: 16px; margin-top: 8px;">
+          Your backend is live and ready to handle requests 🚀
+        </p>
+      </div>
+    </div>
+  `),
 );
+
 
 // Set up the "/api/inngest" (recommended) routes with the serve handler
 app.use("/api/inngest", serve({ client: inngest, functions }));
