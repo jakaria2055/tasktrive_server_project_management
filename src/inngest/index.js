@@ -159,20 +159,51 @@ const syncWorkspaceMemberCreation = inngest.createFunction(
   {
     id: "create-workspace-member",
     triggers: [{ event: "clerk/organizationMembership.created" }],
+    retries: 5, // Add retries for race condition
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const { data } = event;
 
-    console.log("MEMBER EVENT:", data);
+    // Wait for user to exist in DB first
+    await step.run("ensure-user-exists", async () => {
+      let user = null;
+      let attempts = 0;
 
-    await prisma.workspaceMember.create({
-      data: {
-        userId: data.public_user_data.user_id,
-        workspaceId: data.organization.id,
-        role: String(data.role).toUpperCase(),
-      },
+      while (!user && attempts < 10) {
+        user = await prisma.user.findUnique({
+          where: { id: data.public_user_data.user_id },
+        });
+
+        if (!user) {
+          await new Promise((res) => setTimeout(res, 1000)); // wait 1s
+          attempts++;
+        }
+      }
+
+      if (!user) throw new Error("User not found after waiting — will retry");
     });
-    console.log("WORKSPACE MEMBER TRIGGERED");
+
+    await step.run("create-member", async () => {
+      // Avoid duplicate if already exists
+      const existing = await prisma.workspaceMember.findFirst({
+        where: {
+          userId: data.public_user_data.user_id,
+          workspaceId: data.organization.id,
+        },
+      });
+
+      if (existing) return;
+
+      await prisma.workspaceMember.create({
+        data: {
+          userId: data.public_user_data.user_id,
+          workspaceId: data.organization.id,
+          role: String(data.role).toUpperCase(),
+        },
+      });
+    });
+
+    console.log("WORKSPACE MEMBER CREATED SUCCESSFULLY");
   }
 );
 
